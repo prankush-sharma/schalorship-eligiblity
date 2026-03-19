@@ -12,7 +12,7 @@ if (adminToken && dashTabBtn) {
 // Click the Header Title 3 times quickly to reveal the dashboard
 let secretClickCount = 0;
 let secretClickTimer;
-const headerTitle = document.querySelector('.header h1');
+const headerTitle = document.querySelector('.header-brand');
 if (headerTitle) {
     headerTitle.addEventListener('click', () => {
         secretClickCount++;
