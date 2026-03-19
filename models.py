@@ -1,102 +1,118 @@
-import sqlite3
 import os
 from datetime import datetime
+from sqlalchemy import create_engine, Column, Integer, String, DateTime
+from sqlalchemy.orm import declarative_base, sessionmaker
 
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'scorecard.db')
+DATABASE_URL = os.environ.get('DATABASE_URL', 'sqlite:///scorecards.db')
 
+# SQLAlchemy strictly expects postgresql:// but some providers emit postgres://
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
-def get_db():
-    """Get a database connection."""
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")
-    return conn
+# Connect args specific for sqlite to avoid multithreading errors
+connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+
+engine = create_engine(DATABASE_URL, connect_args=connect_args)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
+
+class Scorecard(Base):
+    __tablename__ = "scorecards"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    student_name = Column(String, nullable=False)
+    registration_no = Column(String)
+    qr_data = Column(String, index=True)
+    image_hash = Column(String, index=True)
+    gate_score = Column(String)
+    original_filename = Column(String)
+    uploaded_at = Column(DateTime, default=datetime.utcnow)
 
 
 def init_db():
-    """Initialize the database and create tables if they don't exist."""
-    conn = get_db()
-    conn.execute('''
-        CREATE TABLE IF NOT EXISTS scorecards (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            student_name TEXT NOT NULL,
-            registration_no TEXT,
-            qr_data TEXT,
-            image_hash TEXT,
-            gate_score TEXT,
-            uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            original_filename TEXT
-        )
-    ''')
-    conn.execute('''
-        CREATE INDEX IF NOT EXISTS idx_qr_data ON scorecards(qr_data)
-    ''')
-    conn.execute('''
-        CREATE INDEX IF NOT EXISTS idx_image_hash ON scorecards(image_hash)
-    ''')
-    conn.commit()
-    conn.close()
+    """Initialize the database creating the table schemas."""
+    Base.metadata.create_all(bind=engine)
 
 
 def add_scorecard(student_name, registration_no, qr_data, image_hash, gate_score, original_filename):
     """Add a new scorecard entry to the database."""
-    conn = get_db()
-    cursor = conn.execute('''
-        INSERT INTO scorecards (student_name, registration_no, qr_data, image_hash, gate_score, original_filename)
-        VALUES (?, ?, ?, ?, ?, ?)
-    ''', (student_name, registration_no, qr_data, image_hash, gate_score, original_filename))
-    conn.commit()
-    record_id = cursor.lastrowid
-    conn.close()
-    return record_id
+    session = SessionLocal()
+    try:
+        new_card = Scorecard(
+            student_name=student_name,
+            registration_no=registration_no,
+            qr_data=qr_data,
+            image_hash=image_hash,
+            gate_score=gate_score,
+            original_filename=original_filename
+        )
+        session.add(new_card)
+        session.commit()
+        session.refresh(new_card)
+        return new_card.id
+    finally:
+        session.close()
 
 
 def check_duplicate(qr_data, image_hash):
     """
     Check if a scorecard already exists in the database.
     Matches by QR data OR image hash (perceptual hash).
-    Returns the matching record if found, else None.
     """
-    conn = get_db()
-    row = None
-
-    # Check by QR data first (most reliable)
-    if qr_data:
-        row = conn.execute(
-            'SELECT * FROM scorecards WHERE qr_data = ?', (qr_data,)
-        ).fetchone()
-
-    # If no QR match, check by image hash
-    if not row and image_hash:
-        row = conn.execute(
-            'SELECT * FROM scorecards WHERE image_hash = ?', (image_hash,)
-        ).fetchone()
-
-    conn.close()
-    return dict(row) if row else None
+    session = SessionLocal()
+    try:
+        if qr_data:
+            duplicate = session.query(Scorecard).filter(Scorecard.qr_data == qr_data).first()
+            if duplicate: return True
+                
+        if image_hash:
+            duplicate = session.query(Scorecard).filter(Scorecard.image_hash == image_hash).first()
+            if duplicate: return True
+                
+        return False
+    finally:
+        session.close()
 
 
 def get_all_scorecards():
     """Get all scorecard entries."""
-    conn = get_db()
-    rows = conn.execute(
-        'SELECT * FROM scorecards ORDER BY uploaded_at DESC'
-    ).fetchall()
-    conn.close()
-    return [dict(row) for row in rows]
+    session = SessionLocal()
+    try:
+        cards = session.query(Scorecard).order_by(Scorecard.uploaded_at.desc()).all()
+        # Return list of dicts to match the legacy API format
+        return [
+            {
+                "id": c.id,
+                "student_name": c.student_name,
+                "registration_no": c.registration_no,
+                "qr_data": c.qr_data,
+                "image_hash": c.image_hash,
+                "gate_score": c.gate_score,
+                "original_filename": c.original_filename,
+                "uploaded_at": c.uploaded_at.strftime('%Y-%m-%d %H:%M:%S') if c.uploaded_at else None
+            }
+            for c in cards
+        ]
+    finally:
+        session.close()
 
 
 def delete_scorecard(record_id):
     """Delete a scorecard entry by ID."""
-    conn = get_db()
-    conn.execute('DELETE FROM scorecards WHERE id = ?', (record_id,))
-    conn.commit()
-    conn.close()
+    session = SessionLocal()
+    try:
+        card = session.query(Scorecard).filter(Scorecard.id == record_id).first()
+        if card:
+            session.delete(card)
+            session.commit()
+    finally:
+        session.close()
 
 
 def get_scorecard_count():
-    """Get total number of scorecards."""
-    conn = get_db()
-    count = conn.execute('SELECT COUNT(*) FROM scorecards').fetchone()[0]
-    conn.close()
-    return count
+    """Get total number of verified scorecards."""
+    session = SessionLocal()
+    try:
+        return session.query(Scorecard).count()
+    finally:
+        session.close()
