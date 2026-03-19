@@ -1,6 +1,7 @@
 import os
 import io
 import traceback
+from functools import wraps
 from datetime import datetime
 from flask import Flask, request, jsonify, render_template
 from PIL import Image
@@ -24,6 +25,17 @@ UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'upload
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'bmp', 'gif', 'tiff', 'webp', 'pdf'}
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'goadmin2025')
+
+def require_auth(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        from flask import request
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or auth_header != f"Bearer {ADMIN_PASSWORD}":
+            return jsonify({'error': 'Unauthorized authentication', 'status': 'error'}), 401
+        return f(*args, **kwargs)
+    return decorated
 
 
 def allowed_file(filename):
@@ -214,8 +226,9 @@ def extract_text():
 
 
 @app.route('/api/scorecards', methods=['GET'])
+@require_auth
 def list_scorecards():
-    """Get all stored scorecards."""
+    """Get all stored scorecards (Admin only)."""
     try:
         scorecards = get_all_scorecards()
         count = get_scorecard_count()
@@ -229,8 +242,9 @@ def list_scorecards():
 
 
 @app.route('/api/scorecards/<int:record_id>', methods=['DELETE'])
+@require_auth
 def remove_scorecard(record_id):
-    """Delete a scorecard entry."""
+    """Delete a scorecard entry (Admin only)."""
     try:
         delete_scorecard(record_id)
         return jsonify({'status': 'success', 'message': f'Record {record_id} deleted.'})

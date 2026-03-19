@@ -1,6 +1,7 @@
 // ===== GO Classes Score Card Checker — Frontend JS =====
 
 const API_BASE = '';
+let adminToken = sessionStorage.getItem('adminToken');
 
 // ===== STATE =====
 let selectedFile = null;
@@ -33,7 +34,19 @@ document.querySelectorAll('.nav-tab').forEach(tab => {
         document.getElementById(target).classList.add('active');
 
         if (target === 'dashboard') {
-            loadDashboard();
+            if (!adminToken) {
+                const pwd = prompt("Enter Admin Password to view Dashboard:");
+                if (pwd) {
+                    adminToken = pwd;
+                    sessionStorage.setItem('adminToken', pwd);
+                    loadDashboard();
+                } else {
+                    // Revert tab visually if cancelled
+                    setTimeout(() => document.querySelector('.nav-tab[data-target="upload"]').click(), 10);
+                }
+            } else {
+                loadDashboard();
+            }
         }
     });
 });
@@ -316,8 +329,21 @@ uploadForm.addEventListener('submit', async (e) => {
 
 // ===== DASHBOARD =====
 async function loadDashboard() {
+    if (!adminToken) return; // safety
+    
     try {
-        const response = await fetch(`${API_BASE}/api/scorecards`);
+        const response = await fetch(`${API_BASE}/api/scorecards`, {
+            headers: { 'Authorization': `Bearer ${adminToken}` }
+        });
+        
+        if (response.status === 401) {
+            showToast('Incorrect Admin Password', 'error');
+            adminToken = null;
+            sessionStorage.removeItem('adminToken');
+            switchTab('upload');
+            return;
+        }
+        
         const data = await response.json();
 
         if (data.status === 'success') {
@@ -372,7 +398,10 @@ async function deleteRecord(event, id) {
     // confirmation removed to bypass silent browser blocking
 
     try {
-        const response = await fetch(`${API_BASE}/api/scorecards/${id}`, { method: 'DELETE' });
+        const response = await fetch(`${API_BASE}/api/scorecards/${id}`, { 
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${adminToken}` }
+        });
         const data = await response.json();
 
         if (data.status === 'success') {
