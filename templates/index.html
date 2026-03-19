@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="GO Classes — Scholarship Score Card Duplicate Detection System. Verify GATE score cards and prevent duplicate scholarship claims.">
+    <title>GO Classes — Score Card Checker</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='28' font-size='28'>🎓</text></svg>">
+</head>
+<body>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="header-brand">
+            <div class="header-logo">GO</div>
+            <div>
+                <div class="header-title">Score Card Checker</div>
+                <div class="header-subtitle">Scholarship Duplicate Detection System</div>
+            </div>
+        </div>
+        <div class="header-stats">
+            <div class="stat-item">
+                <div class="stat-value" id="totalCount">0</div>
+                <div class="stat-label">Total Verified</div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs">
+        <button class="nav-tab active" data-tab="upload">
+            <span class="tab-icon">📤</span> Verify Score Card
+        </button>
+        <button class="nav-tab" data-tab="dashboard">
+            <span class="tab-icon">📊</span> Dashboard
+        </button>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+
+        <!-- ===== UPLOAD TAB ===== -->
+        <div class="tab-content active" id="upload">
+            <div class="upload-container">
+
+                <!-- Upload Form Card -->
+                <div class="upload-card">
+                    <div class="card-header">
+                        <div class="card-header-icon upload-icon">📄</div>
+                        <div>
+                            <div class="card-title">Upload Score Card</div>
+                            <div class="card-description">Upload GATE score card image for verification</div>
+                        </div>
+                    </div>
+
+                    <form id="uploadForm">
+                        <!-- Drop Zone -->
+                        <div class="drop-zone" id="dropZone">
+                            <div class="drop-zone-icon">🖼️</div>
+                            <div class="drop-zone-text">Drag & drop your score card here</div>
+                            <div class="drop-zone-hint">or click to browse files (PNG, JPG, PDF, etc.)</div>
+                        </div>
+                        <input type="file" id="fileInput" accept="image/*,.pdf" style="display:none;">
+
+                        <!-- File Preview -->
+                        <div class="file-preview" id="filePreview">
+                            <span class="file-preview-icon">📎</span>
+                            <span class="file-preview-name" id="filePreviewName"></span>
+                            <span class="file-preview-size" id="filePreviewSize"></span>
+                            <button type="button" class="file-preview-remove" id="removeFile" title="Remove file">✕</button>
+                        </div>
+
+                        <!-- Scanning Status -->
+                        <div class="scan-status" id="scanStatus" style="display:none;">
+                            <div class="scan-spinner"></div>
+                            <div class="scan-text">Scanning document...</div>
+                        </div>
+
+                        <!-- Student Info -->
+                        <div class="form-group">
+                            <label class="form-label">Student Name <span class="required">*</span></label>
+                            <input type="text" class="form-input" id="studentName" placeholder="e.g. Rahul Sharma" required>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Registration No.</label>
+                                <input type="text" class="form-input" id="registrationNo" placeholder="e.g. GT2025XXXXXX">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">GATE Score</label>
+                                <input type="text" class="form-input" id="gateScore" placeholder="e.g. 720">
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn-submit" id="submitBtn">
+                            <span class="btn-text">🔍 Verify & Check Duplicate</span>
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Result Card -->
+                <div class="result-card">
+                    <div class="card-header">
+                        <div class="card-header-icon result-icon">⚡</div>
+                        <div>
+                            <div class="card-title">Verification Result</div>
+                            <div class="card-description">QR code + image hash analysis</div>
+                        </div>
+                    </div>
+
+                    <!-- Placeholder -->
+                    <div id="resultPlaceholder" class="result-placeholder">
+                        <div class="result-placeholder-icon">🔒</div>
+                        <div class="result-placeholder-text">Upload a score card to see verification results</div>
+                    </div>
+
+                    <!-- Approved Result -->
+                    <div id="resultApproved" class="result-approved">
+                        <div class="result-banner approved">
+                            <div class="result-banner-icon">✅</div>
+                            <div class="result-banner-title">SCHOLARSHIP APPROVED</div>
+                            <div class="result-banner-text">This score card is verified and unique</div>
+                        </div>
+                        <div class="result-details">
+                            <div class="result-detail-row">
+                                <span class="result-detail-label">Student</span>
+                                <span class="result-detail-value" id="approvedName">—</span>
+                            </div>
+                            <div class="result-detail-row">
+                                <span class="result-detail-label">Registration No.</span>
+                                <span class="result-detail-value" id="approvedRegNo">—</span>
+                            </div>
+                            <div class="result-detail-row">
+                                <span class="result-detail-label">GATE Score</span>
+                                <span class="result-detail-value" id="approvedScore">—</span>
+                            </div>
+                            <div class="result-detail-row">
+                                <span class="result-detail-label">QR Code</span>
+                                <span class="result-detail-value" id="approvedQR">—</span>
+                            </div>
+                            <div class="result-detail-row">
+                                <span class="result-detail-label">Image Hash</span>
+                                <span class="result-detail-value" id="approvedHash" style="font-family: monospace; font-size: 11px;">—</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Duplicate Result -->
+                    <div id="resultDuplicate" class="result-duplicate">
+                        <div class="result-banner duplicate">
+                            <div class="result-banner-icon">🚨</div>
+                            <div class="result-banner-title">DUPLICATE DETECTED</div>
+                            <div class="result-banner-text">This score card has already been used for a scholarship!</div>
+                        </div>
+                        <div class="result-details">
+                            <div class="result-detail-row">
+                                <span class="result-detail-label">Already Used By</span>
+                                <span class="result-detail-value" id="dupOriginalName" style="color: var(--danger);">—</span>
+                            </div>
+                            <div class="result-detail-row">
+                                <span class="result-detail-label">Registration No.</span>
+                                <span class="result-detail-value" id="dupOriginalRegNo">—</span>
+                            </div>
+                            <div class="result-detail-row">
+                                <span class="result-detail-label">GATE Score</span>
+                                <span class="result-detail-value" id="dupOriginalScore">—</span>
+                            </div>
+                            <div class="result-detail-row">
+                                <span class="result-detail-label">Submitted On</span>
+                                <span class="result-detail-value" id="dupOriginalDate">—</span>
+                            </div>
+                            <div class="result-detail-row">
+                                <span class="result-detail-label">Match Type</span>
+                                <span class="match-type-badge" id="dupMatchType">—</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== DASHBOARD TAB ===== -->
+        <div class="tab-content" id="dashboard">
+            <div class="dashboard-header">
+                <div class="dashboard-title">📋 All Verified Score Cards</div>
+                <div class="dashboard-search">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="searchInput" placeholder="Search by name, registration...">
+                </div>
+            </div>
+
+            <!-- Empty State -->
+            <div class="empty-state" id="emptyState" style="display:none;">
+                <div class="empty-state-icon">📭</div>
+                <div class="empty-state-text">No score cards verified yet</div>
+                <div class="empty-state-hint">Upload a score card to get started</div>
+            </div>
+
+            <!-- Data Table -->
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Student Name</th>
+                            <th>Reg. No.</th>
+                            <th>Score</th>
+                            <th>QR Code</th>
+                            <th>Image Hash</th>
+                            <th>Submitted</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <script src="/static/app.js?v=7"></script>
+</body>
+</html>
