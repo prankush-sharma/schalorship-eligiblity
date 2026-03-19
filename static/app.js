@@ -2,6 +2,44 @@
 
 const API_BASE = '';
 let adminToken = sessionStorage.getItem('adminToken');
+const dashTabBtn = document.getElementById('dashTabBtn');
+
+if (adminToken && dashTabBtn) {
+    dashTabBtn.style.display = '';
+}
+
+// ===== SECRET ADMIN TRIGGER =====
+// Click the Header Title 3 times quickly to reveal the dashboard
+let secretClickCount = 0;
+let secretClickTimer;
+const headerTitle = document.querySelector('.header h1');
+if (headerTitle) {
+    headerTitle.addEventListener('click', () => {
+        secretClickCount++;
+        clearTimeout(secretClickTimer);
+        secretClickTimer = setTimeout(() => secretClickCount = 0, 1000);
+        
+        if (secretClickCount >= 3) {
+            secretClickCount = 0;
+            if (!adminToken) {
+                const pwd = prompt("Secret Admin Access - Enter Password:");
+                if (pwd) {
+                    adminToken = pwd;
+                    sessionStorage.setItem('adminToken', pwd);
+                    if (dashTabBtn) {
+                        dashTabBtn.style.display = '';
+                        dashTabBtn.click();
+                    }
+                }
+            } else {
+                if (dashTabBtn) {
+                    dashTabBtn.style.display = '';
+                    dashTabBtn.click();
+                }
+            }
+        }
+    });
+}
 
 // ===== STATE =====
 let selectedFile = null;
@@ -34,19 +72,7 @@ document.querySelectorAll('.nav-tab').forEach(tab => {
         document.getElementById(target).classList.add('active');
 
         if (target === 'dashboard') {
-            if (!adminToken) {
-                const pwd = prompt("Enter Admin Password to view Dashboard:");
-                if (pwd) {
-                    adminToken = pwd;
-                    sessionStorage.setItem('adminToken', pwd);
-                    loadDashboard();
-                } else {
-                    // Revert tab visually if cancelled
-                    setTimeout(() => document.querySelector('.nav-tab[data-target="upload"]').click(), 10);
-                }
-            } else {
-                loadDashboard();
-            }
+            loadDashboard();
         }
     });
 });
