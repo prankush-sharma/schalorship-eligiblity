@@ -61,15 +61,26 @@ def check_duplicate(qr_data, image_hash):
     """
     session = SessionLocal()
     try:
+        duplicate = None
         if qr_data:
             duplicate = session.query(Scorecard).filter(Scorecard.qr_data == qr_data).first()
-            if duplicate: return True
                 
-        if image_hash:
+        if not duplicate and image_hash:
             duplicate = session.query(Scorecard).filter(Scorecard.image_hash == image_hash).first()
-            if duplicate: return True
+            
+        if duplicate:
+            return {
+                "id": duplicate.id,
+                "student_name": duplicate.student_name,
+                "registration_no": duplicate.registration_no,
+                "qr_data": duplicate.qr_data,
+                "image_hash": duplicate.image_hash,
+                "gate_score": duplicate.gate_score,
+                "original_filename": duplicate.original_filename,
+                "uploaded_at": duplicate.uploaded_at.strftime('%Y-%m-%d %H:%M:%S') if duplicate.uploaded_at else None
+            }
                 
-        return False
+        return None
     finally:
         session.close()
 
