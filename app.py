@@ -20,6 +20,9 @@ except Exception:
 from models import init_db, add_scorecard, check_duplicate, get_all_scorecards, delete_scorecard, get_scorecard_count
 
 app = Flask(__name__)
+# Ensure database schema is initialized on startup (even in Gunicorn)
+init_db()
+
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB max upload
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -267,7 +270,6 @@ def stats():
 
 
 if __name__ == '__main__':
-    init_db()
     print("=" * 60)
     print("  GO Classes - Scholarship Score Card Checker")
     qr_status = "Available" if QR_AVAILABLE else "Not available (will use image hash only)"
