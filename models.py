@@ -34,6 +34,18 @@ class Scorecard(Base):
 def init_db():
     """Initialize the database creating the table schemas."""
     Base.metadata.create_all(bind=engine)
+    
+    # Auto-upgrade existing Postgres/SQLite database with new columns
+    from sqlalchemy import text
+    with engine.begin() as conn:
+        try:
+            conn.execute(text("ALTER TABLE scorecards ADD COLUMN branch VARCHAR;"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE scorecards ADD COLUMN rank INTEGER;"))
+        except Exception:
+            pass
 
 
 def add_scorecard(student_name, registration_no, qr_data, image_hash, gate_score, branch, rank, original_filename):
