@@ -156,6 +156,40 @@ def upload_scorecard():
         # Extract QR code data
         qr_data = extract_qr_data(image)
 
+        import re
+        import json
+        
+        # Security: Cross-verify Form Data against genuine QR Code data
+        if qr_data:
+            qr_reg = None
+            qr_score = None
+            qr_rank = None
+            
+            try:
+                qr_obj = json.loads(qr_data)
+                qr_reg = qr_obj.get("reg") or qr_obj.get("registration") or qr_obj.get("registration_no")
+                qr_score = qr_obj.get("score") or qr_obj.get("gate_score")
+                qr_rank = qr_obj.get("rank") or qr_obj.get("air")
+            except Exception:
+                pass
+                
+            if not qr_reg:
+                match = re.search(r'\b([A-Z]{2}\d{2}[A-Z0-9]{5,10})\b', qr_data, re.IGNORECASE)
+                if match: qr_reg = match.group(1).upper()
+            if not qr_score:
+                match = re.search(r'(?:score|marks)[\s:="\']*(\d{2,4})', qr_data, re.IGNORECASE)
+                if match: qr_score = match.group(1)
+            if not qr_rank:
+                match = re.search(r'(?:rank|air|all india rank)[\s:="\']*(\d{1,5})', qr_data, re.IGNORECASE)
+                if match: qr_rank = match.group(1)
+            
+            if qr_reg and registration_no and qr_reg.upper() != registration_no.upper():
+                return jsonify({'status': 'rejected', 'message': 'FRAUD DETECTED: Form Registration No. does not match the original GATE QR Code.'}), 200
+            if qr_score and gate_score and str(qr_score) != str(gate_score):
+                return jsonify({'status': 'rejected', 'message': 'FRAUD DETECTED: Form GATE Score does not match the original GATE QR Code.'}), 200
+            if qr_rank and rank and str(qr_rank) != str(rank):
+                return jsonify({'status': 'rejected', 'message': 'FRAUD DETECTED: Form Rank does not match the original GATE QR Code.'}), 200
+
         # Compute perceptual hash
         image_hash = compute_image_hash(image)
 
