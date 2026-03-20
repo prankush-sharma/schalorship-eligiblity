@@ -127,6 +127,8 @@ function parseExtractedText(text, qrData = null) {
     let name = '';
     let regNo = '';
     let score = '';
+    let branch = '';
+    let rank = '';
 
     // Step 1: Attempt to pull perfect data from the embedded QR code
     if (qrData) {
@@ -170,6 +172,20 @@ function parseExtractedText(text, qrData = null) {
         } else if (!score && /^(?:GATE Score|Score)\s*[\:\-]\s*(\d+)$/i.test(line)) {
             score = line.match(/^(?:GATE Score|Score)\s*[\:\-]\s*(\d+)$/i)[1];
         }
+
+        // Match Rank
+        if (!rank && /^(?:All India Rank|Rank in this Paper|Rank)$/i.test(line) && i + 1 < lines.length) {
+            rank = lines[i + 1].replace(/[^\d]/g, '');
+        } else if (!rank && /^(?:All India Rank|Rank in this Paper|Rank)\s*[\:\-]\s*(\d+)$/i.test(line)) {
+            rank = line.match(/^(?:All India Rank|Rank in this Paper|Rank)\s*[\:\-]\s*(\d+)$/i)[1];
+        }
+
+        // Match Branch
+        if (!branch && /^(?:Name of Paper|Subject|Paper|Branch)$/i.test(line) && i + 1 < lines.length) {
+            branch = lines[i + 1];
+        } else if (!branch && /^(?:Name of Paper|Subject|Paper|Branch)\s*[\:\-]\s*(.+)$/i.test(line)) {
+            branch = line.match(/^(?:Name of Paper|Subject|Paper|Branch)\s*[\:\-]\s*(.+)$/i)[1];
+        }
     }
     
     // Fallbacks if line-by-line fails
@@ -186,7 +202,9 @@ function parseExtractedText(text, qrData = null) {
     if (!name && !regNo && lines.length >= 10 && /^[A-Z]{2}\d{2}[A-Z0-9]+$/i.test(lines[0])) {
         // We caught the official GATE PDF labelless format!
         regNo = lines[0].toUpperCase();
+        branch = lines[1].trim();
         name = lines[2].replace(/[^a-zA-Z\s]/g, '').trim();
+        rank = lines[3].replace(/[^\d]/g, '').trim();
         
         // Find the GATE score (first valid integer <= 1000 after the hash)
         // We start searching after the Rank (index 3) and Hash (index 4)
@@ -219,8 +237,10 @@ function parseExtractedText(text, qrData = null) {
     if (name && name.length > 2) document.getElementById('studentName').value = name;
     if (regNo) document.getElementById('registrationNo').value = regNo;
     if (score) document.getElementById('gateScore').value = parseInt(score).toString(); // clean up any extra chars
+    if (branch) document.getElementById('branch').value = branch;
+    if (rank) document.getElementById('rank').value = rank;
     
-    if (name || regNo || score) {
+    if (name || regNo || score || branch || rank) {
         showToast('Document scanned and details auto-filled!', 'success');
     } else {
         showToast('Could not automatically detect details. Please enter manually.', 'error');
@@ -236,6 +256,8 @@ async function autoExtractDetails(file) {
     document.getElementById('studentName').value = '';
     document.getElementById('registrationNo').value = '';
     document.getElementById('gateScore').value = '';
+    document.getElementById('branch').value = '';
+    document.getElementById('rank').value = '';
     
     try {
         // ALWAYS pass file to backend to fetch embedded QR payload and native PDF text if available
@@ -301,6 +323,8 @@ uploadForm.addEventListener('submit', async (e) => {
     formData.append('student_name', studentName);
     formData.append('registration_no', document.getElementById('registrationNo').value.trim());
     formData.append('gate_score', document.getElementById('gateScore').value.trim());
+    formData.append('branch', document.getElementById('branch').value.trim());
+    formData.append('rank', document.getElementById('rank').value.trim());
 
     // Show loading
     submitBtn.classList.add('loading');
@@ -318,17 +342,25 @@ uploadForm.addEventListener('submit', async (e) => {
         resultPlaceholder.style.display = 'none';
         resultApproved.classList.remove('show');
         resultDuplicate.classList.remove('show');
+        document.getElementById('resultRejected').classList.remove('show');
 
         if (data.status === 'approved') {
             // Show approved result
             document.getElementById('approvedName').textContent = data.record.student_name;
             document.getElementById('approvedRegNo').textContent = data.record.registration_no || 'N/A';
             document.getElementById('approvedScore').textContent = data.record.gate_score || 'N/A';
+            document.getElementById('approvedBranch').textContent = data.record.branch || 'N/A';
+            document.getElementById('approvedRank').textContent = data.record.rank || 'N/A';
             document.getElementById('approvedQR').textContent = data.record.qr_data_found ? '✓ Found' : '✗ Not Found';
             document.getElementById('approvedHash').textContent = data.record.image_hash || 'N/A';
             resultApproved.classList.add('show');
             showToast('✅ Scholarship approved! Score card verified.', 'success');
             updateStats();
+
+        } else if (data.status === 'rejected') {
+            document.getElementById('rejectedMessage').textContent = data.message;
+            document.getElementById('resultRejected').classList.add('show');
+            showToast('🚫 Not Eligible! ' + data.message, 'error');
 
         } else if (data.status === 'duplicate') {
             // Show duplicate result
@@ -398,6 +430,8 @@ function renderTable(scorecards) {
             <td style="color: var(--text-primary); font-weight: 600;">${sc.student_name}</td>
             <td>${sc.registration_no || '—'}</td>
             <td>${sc.gate_score || '—'}</td>
+            <td style="max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${sc.branch || ''}">${sc.branch || '—'}</td>
+            <td>${sc.rank || '—'}</td>
             <td>
                 <span class="qr-status ${sc.qr_data ? 'found' : 'not-found'}">
                     ${sc.qr_data ? '✓ Found' : '✗ N/A'}

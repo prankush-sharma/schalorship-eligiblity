@@ -111,6 +111,30 @@ def upload_scorecard():
 
         registration_no = request.form.get('registration_no', '').strip()
         gate_score = request.form.get('gate_score', '').strip()
+        branch = request.form.get('branch', '').strip()
+        rank_str = request.form.get('rank', '').strip()
+        try:
+            rank = int(rank_str) if rank_str else None
+        except ValueError:
+            rank = None
+
+        # Eligibility Check
+        allowed_branches = [
+            "cs", "computer science", "computer science and information technology", 
+            "computer science and engineering", "da", "data science and artificial intelligence",
+            "data science & artificial intelligence"
+        ]
+        if not branch or branch.lower() not in allowed_branches:
+            return jsonify({
+                'status': 'rejected',
+                'message': f'Not eligible for scholarship. Branch "{branch}" is not eligible. Only CS and DA are allowed.'
+            }), 200
+
+        if rank is None or rank > 500:
+            return jsonify({
+                'status': 'rejected',
+                'message': f'Not eligible for scholarship. Rank must be 500 or below. (Found Rank: {rank})'
+            }), 200
 
         # Read and process image
         image_bytes = file.read()
@@ -146,6 +170,8 @@ def upload_scorecard():
                     'student_name': duplicate['student_name'],
                     'registration_no': duplicate['registration_no'] or 'N/A',
                     'gate_score': duplicate['gate_score'] or 'N/A',
+                    'branch': duplicate['branch'] or 'N/A',
+                    'rank': duplicate['rank'] or 'N/A',
                     'uploaded_at': duplicate['uploaded_at'],
                     'original_filename': duplicate['original_filename']
                 },
@@ -165,6 +191,8 @@ def upload_scorecard():
             qr_data=qr_data,
             image_hash=image_hash,
             gate_score=gate_score,
+            branch=branch,
+            rank=rank,
             original_filename=file.filename
         )
 
@@ -176,6 +204,8 @@ def upload_scorecard():
                 'student_name': student_name,
                 'registration_no': registration_no,
                 'gate_score': gate_score,
+                'branch': branch,
+                'rank': rank,
                 'qr_data_found': qr_data is not None,
                 'image_hash': image_hash
             }

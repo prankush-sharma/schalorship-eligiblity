@@ -25,6 +25,8 @@ class Scorecard(Base):
     qr_data = Column(String, index=True)
     image_hash = Column(String, index=True)
     gate_score = Column(String)
+    branch = Column(String)
+    rank = Column(Integer)
     original_filename = Column(String)
     uploaded_at = Column(DateTime, default=datetime.utcnow)
 
@@ -34,7 +36,7 @@ def init_db():
     Base.metadata.create_all(bind=engine)
 
 
-def add_scorecard(student_name, registration_no, qr_data, image_hash, gate_score, original_filename):
+def add_scorecard(student_name, registration_no, qr_data, image_hash, gate_score, branch, rank, original_filename):
     """Add a new scorecard entry to the database."""
     session = SessionLocal()
     try:
@@ -44,6 +46,8 @@ def add_scorecard(student_name, registration_no, qr_data, image_hash, gate_score
             qr_data=qr_data,
             image_hash=image_hash,
             gate_score=gate_score,
+            branch=branch,
+            rank=rank,
             original_filename=original_filename
         )
         session.add(new_card)
@@ -76,6 +80,8 @@ def check_duplicate(qr_data, image_hash):
                 "qr_data": duplicate.qr_data,
                 "image_hash": duplicate.image_hash,
                 "gate_score": duplicate.gate_score,
+                "branch": duplicate.branch,
+                "rank": duplicate.rank,
                 "original_filename": duplicate.original_filename,
                 "uploaded_at": duplicate.uploaded_at.strftime('%Y-%m-%d %H:%M:%S') if duplicate.uploaded_at else None
             }
@@ -99,6 +105,8 @@ def get_all_scorecards():
                 "qr_data": c.qr_data,
                 "image_hash": c.image_hash,
                 "gate_score": c.gate_score,
+                "branch": c.branch,
+                "rank": c.rank,
                 "original_filename": c.original_filename,
                 "uploaded_at": c.uploaded_at.strftime('%Y-%m-%d %H:%M:%S') if c.uploaded_at else None
             }

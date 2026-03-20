@@ -97,6 +97,17 @@
                             </div>
                         </div>
 
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Branch (Subject)</label>
+                                <input type="text" class="form-input" id="branch" placeholder="e.g. Computer Science">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">All India Rank</label>
+                                <input type="number" class="form-input" id="rank" placeholder="e.g. 250">
+                            </div>
+                        </div>
+
                         <button type="submit" class="btn-submit" id="submitBtn">
                             <span class="btn-text">🔍 Verify & Check Duplicate</span>
                         </button>
@@ -140,6 +151,14 @@
                                 <span class="result-detail-value" id="approvedScore">—</span>
                             </div>
                             <div class="result-detail-row">
+                                <span class="result-detail-label">Branch</span>
+                                <span class="result-detail-value" id="approvedBranch">—</span>
+                            </div>
+                            <div class="result-detail-row">
+                                <span class="result-detail-label">Rank</span>
+                                <span class="result-detail-value" id="approvedRank">—</span>
+                            </div>
+                            <div class="result-detail-row">
                                 <span class="result-detail-label">QR Code</span>
                                 <span class="result-detail-value" id="approvedQR">—</span>
                             </div>
@@ -147,6 +166,15 @@
                                 <span class="result-detail-label">Image Hash</span>
                                 <span class="result-detail-value" id="approvedHash" style="font-family: monospace; font-size: 11px;">—</span>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Rejected Result -->
+                    <div id="resultRejected" class="result-duplicate">
+                        <div class="result-banner duplicate">
+                            <div class="result-banner-icon">🚫</div>
+                            <div class="result-banner-title">NOT ELIGIBLE</div>
+                            <div class="result-banner-text" id="rejectedMessage">This score card does not meet the rank or branch scholarship criteria.</div>
                         </div>
                     </div>
 
@@ -209,6 +237,8 @@
                             <th>Student Name</th>
                             <th>Reg. No.</th>
                             <th>Score</th>
+                            <th>Branch</th>
+                            <th>Rank</th>
                             <th>QR Code</th>
                             <th>Image Hash</th>
                             <th>Submitted</th>
